@@ -9,24 +9,23 @@ using System.Net.Http.Json;
 
 namespace EagleBank.Tests
 {
-	public class UserTests : IClassFixture<MsSqlTests>, IDisposable
+	[Collection(nameof(DatabaseTestCollection))]
+	public class UserTests : IAsyncLifetime
 	{
 		private readonly WebApplicationFactory<Program> _webApplicationFactory;
 		private readonly HttpClient _httpClient;
+		private Func<Task> _resetDatabase;
 
-		public UserTests(MsSqlTests fixture)
+		public UserTests(CustomWebApplicationFactory factory)
 		{
 			var clientOptions = new WebApplicationFactoryClientOptions
 			{
 				AllowAutoRedirect = false
 			};
 
-			_webApplicationFactory = new CustomWebApplicationFactory(fixture);
+			_webApplicationFactory = factory;
 			_httpClient = _webApplicationFactory.CreateClient(clientOptions);
-
-			var scope = _webApplicationFactory.Services.CreateScope();
-			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
-			dbContext.Database.Migrate();
+			_resetDatabase = factory.ResetDatabase;
 		}
 
 		[Fact]
@@ -75,9 +74,8 @@ namespace EagleBank.Tests
 			Assert.Contains("Username already exists", responseContent);
 		}
 
-		public void Dispose()
-		{
-			_webApplicationFactory.Dispose();
-		}
+		public Task InitializeAsync() => Task.CompletedTask;
+
+		public Task DisposeAsync() => _resetDatabase();
 	}
 }
