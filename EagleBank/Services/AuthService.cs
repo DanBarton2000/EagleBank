@@ -13,7 +13,7 @@ namespace EagleBank.Services
 {
 	public class AuthService(EagleBankDbContext context, IConfiguration configuration) : IAuthService
 	{
-		public async Task<UserDto?> CreateAsync(UserDto request)
+		public async Task<UserResponseDto?> CreateAsync(UserDto request)
 		{
 			if (string.IsNullOrEmpty(request.Username))
 				return null;
@@ -33,13 +33,10 @@ namespace EagleBank.Services
 			context.Users.Add(user);
 			await context.SaveChangesAsync();
 
-			return new UserDto
-			{
-				Username = request.Username,
-			};
+			return UserResponseDto.FromUser(user);
 		}
 
-		public async Task<string?> LoginAsync(UserDto request)
+		public async Task<LoginDto?> LoginAsync(UserDto request)
 		{
 			User? user = await context.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
 
@@ -49,7 +46,23 @@ namespace EagleBank.Services
 			if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
 				return null;
 
-			return CreateToken(user);
+			LoginDto loginDto = new()
+			{
+				Id = user.Id,
+				Token = CreateToken(user)
+			};
+
+			return loginDto;
+		}
+
+		public async Task<UserResponseDto?> FetchUserAsync(int id)
+		{
+			User? user = await context.Users.SingleOrDefaultAsync(u => u.Id == id);
+
+			if (user == null)
+				return null;
+
+			return UserResponseDto.FromUser(user);
 		}
 
 		private string CreateToken(User user)

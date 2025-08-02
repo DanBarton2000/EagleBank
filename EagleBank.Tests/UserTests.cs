@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -131,7 +132,8 @@ namespace EagleBank.Tests
 			// Assert
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-			var responseContent = await response.Content.ReadAsStringAsync();
+			var responseContent = await response.Content.ReadFromJsonAsync<LoginDto>();
+			Assert.NotNull(responseContent);
 
 			var configuration = _webApplicationFactory.Services.GetRequiredService<IConfiguration>();
 			var tokenValidationParameters = new TokenValidationParameters
@@ -150,7 +152,7 @@ namespace EagleBank.Tests
 
 			try
 			{
-				var principal = tokenHandler.ValidateToken(responseContent, tokenValidationParameters, out var validatedToken);
+				var principal = tokenHandler.ValidateToken(responseContent.Token, tokenValidationParameters, out var validatedToken);
 
 				Assert.NotNull(principal);
 				Assert.IsType<JwtSecurityToken>(validatedToken);
@@ -213,6 +215,80 @@ namespace EagleBank.Tests
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 			var responseContent = await response.Content.ReadAsStringAsync();
 			Assert.Contains("Invalid username or password.", responseContent);
+		}
+
+		[Fact]
+		public async Task FetchUser_WhenIdIsValid_ReturnsOkWithUserResponseDto()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Login to get the JWT
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
+			Assert.NotNull(loginDto);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			response = await _httpClient.SendAsync(request);
+
+			// Assert
+			var userResponse = await response.Content.ReadFromJsonAsync<UserResponseDto>();
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.NotNull(userResponse);
+			Assert.Equal(userDto.Username, userResponse.Username);
+		}
+
+		[Fact]
+		public async Task FetchUser_WhenIdDoesntExist_ReturnsNotFound()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Login to get the JWT
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
+			Assert.NotNull(loginDto);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto.Id + 1}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			response = await _httpClient.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task FetchUser_FetchingAnthorUser_ReturnsForbidden()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			var userDto1 = new UserDto { Username = "testuser1", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto1);
+
+			// Login to get the JWT
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
+			Assert.NotNull(loginDto);
+
+			// Login with the other use to get the id
+			response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto1);
+			LoginDto? loginDto1 = await response.Content.ReadFromJsonAsync<LoginDto>();
+			Assert.NotNull(loginDto1);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto1.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			response = await _httpClient.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 		}
 
 		public Task InitializeAsync() => Task.CompletedTask;

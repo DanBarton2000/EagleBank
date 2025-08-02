@@ -1,6 +1,8 @@
 using EagleBank.Data;
 using EagleBank.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -32,6 +34,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	});
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.AddControllers(config =>
+{
+	var policy = new AuthorizationPolicyBuilder()
+					 .RequireAuthenticatedUser()
+					 .Build();
+	config.Filters.Add(new AuthorizeFilter(policy));
+});
 
 var app = builder.Build();
 

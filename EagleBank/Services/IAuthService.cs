@@ -4,7 +4,8 @@ namespace EagleBank.Services
 {
 	public interface IAuthService
 	{
-		Task<UserDto?> CreateAsync(UserDto request);
-		Task<string?> LoginAsync(UserDto request);
+		Task<UserResponseDto?> CreateAsync(UserDto request);
+		Task<LoginDto?> LoginAsync(UserDto request);
+		Task<UserResponseDto?> FetchUserAsync(int id);
 	}
 }
