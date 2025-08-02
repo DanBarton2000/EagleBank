@@ -48,5 +48,27 @@ namespace EagleBank.Controllers
 			
 			return Ok(accounts);
 		}
+
+		[HttpGet("{id}")]
+		public async Task<ActionResult<AccountResponseDto>> GetAccount(int id)
+		{
+			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+
+			if (nameIdClaim is null)
+				return Forbid();
+
+			if (!int.TryParse(nameIdClaim.Value, out int nameId))
+				return BadRequest("JWT did not contain Id.");
+
+			var account = await accountService.GetAccount(id);
+
+			if (account is null)
+				return NotFound();
+
+			if (account.UserId != nameId)
+				return Forbid();
+
+			return Ok(AccountResponseDto.FromAccount(account));
+		}
 	}
 }

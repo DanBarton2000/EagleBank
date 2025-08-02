@@ -15,31 +15,12 @@ using System.Threading.Tasks;
 
 namespace EagleBank.Tests
 {
-	public class AccountTests : DatabaseTests
+	public class AccountTests(CustomWebApplicationFactory factory) : DatabaseTests(factory)
 	{
-		private readonly HttpClient _httpClient;
-
-		public AccountTests(CustomWebApplicationFactory factory) : base(factory)
-		{
-			var clientOptions = new WebApplicationFactoryClientOptions
-			{
-				AllowAutoRedirect = false
-			};
-
-			_httpClient = WebApplicationFactory.CreateClient(clientOptions);
-		}
-
 		[Fact]
 		public async Task CreateAccount_ReturnsOkWithAccountResponseDto()
 		{
-			// Add a user to the database first
-			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
-
-			// Login to get the JWT
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
-			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
-			Assert.NotNull(loginDto);
+			LoginDto loginDto = await CreateAndLoginUser("testuser", "password123");
 
 			// Arrange
 			AccountDto accountDto = new()
@@ -56,7 +37,7 @@ namespace EagleBank.Tests
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
 
 			// Act
-			response = await _httpClient.SendAsync(request);
+			var response = await Client.SendAsync(request);
 			Assert.NotNull(response);
 
 			// Assert
@@ -80,35 +61,17 @@ namespace EagleBank.Tests
 		public async Task GetAccounts_ReturnsOkWithListAccountResponseDto()
 		{
 			// Add a user to the database first
-			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
-
-			// Login to get the JWT
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
-			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
-			Assert.NotNull(loginDto);
+			LoginDto loginDto = await CreateAndLoginUser("testuser", "password123");
 
 			int accountCount = 3;
 			for (int i = 0; i < accountCount; i++)
 			{
-				AccountDto accountDto = new()
-				{
-					Type = Entities.AccountType.Current
-				};
-
-				var json = JsonSerializer.Serialize(accountDto);
-
-				var accountRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/accounts")
-				{
-					Content = new StringContent(json, Encoding.UTF8, "application/json")
-				};
-				accountRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
-				_ = await _httpClient.SendAsync(accountRequest);
+				_ = await CreateCurrentAccount(loginDto);
 			}
 
 			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
-			response = await _httpClient.SendAsync(request);
+			var response = await Client.SendAsync(request);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -116,6 +79,60 @@ namespace EagleBank.Tests
 			var accountResponse = await response.Content.ReadFromJsonAsync<ICollection<AccountResponseDto>>();
 			Assert.NotNull(accountResponse);
 			Assert.Equal(accountCount, accountResponse.Count);
+		}
+
+		[Fact]
+		public async Task GetAccount_FetchOwnAccount_ReturnsOkWithAccountResponseDto()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("testuser", "password123");
+			var accountResponse = await CreateCurrentAccount(loginDto);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountResponse.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+			
+			// Assert
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+			var fetchedAccount = await response.Content.ReadFromJsonAsync<AccountResponseDto>();
+			Assert.NotNull(fetchedAccount);
+			Assert.Equal(accountResponse.Id, fetchedAccount.Id);
+			Assert.Equal(accountResponse.Type, fetchedAccount.Type);
+			Assert.Equal(accountResponse.Value, fetchedAccount.Value);
+		}
+
+		[Fact]
+		public async Task GetAccount_FetchAnotherUsersAccount_ReturnsForbidden()
+		{
+			// Arrange
+			LoginDto user1 = await CreateAndLoginUser("testuser1", "password123");
+			LoginDto user2 = await CreateAndLoginUser("testuser2", "password123");
+			AccountResponseDto accountResponse = await CreateCurrentAccount(user1);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountResponse.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user2.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task GetAccount_FetchNonExistentAccount_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto user1 = await CreateAndLoginUser("testuser1", "password123");
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{0}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user1.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 		}
 	}
 }

@@ -15,20 +15,8 @@ using System.Text;
 
 namespace EagleBank.Tests
 {
-	public class UserTests : DatabaseTests
+	public class UserTests(CustomWebApplicationFactory factory) : DatabaseTests(factory)
 	{
-		private readonly HttpClient _httpClient;
-
-		public UserTests(CustomWebApplicationFactory factory) : base(factory)
-		{
-			var clientOptions = new WebApplicationFactoryClientOptions
-			{
-				AllowAutoRedirect = false
-			};
-
-			_httpClient = WebApplicationFactory.CreateClient(clientOptions);
-		}
-
 		[Fact]
 		public async Task CreateUser_WhenUsernameIsUnique_ReturnsOkWithUserDto()
 		{
@@ -36,7 +24,7 @@ namespace EagleBank.Tests
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -67,7 +55,7 @@ namespace EagleBank.Tests
 			}
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -82,7 +70,7 @@ namespace EagleBank.Tests
 			var userDto = new { Password = "testuser" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -95,7 +83,7 @@ namespace EagleBank.Tests
 			var userDto = new { Username = "testuser" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -108,7 +96,7 @@ namespace EagleBank.Tests
 			UserDto? userDto = null;
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -119,10 +107,10 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -166,7 +154,7 @@ namespace EagleBank.Tests
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -179,13 +167,13 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Arrange
 			userDto = new UserDto { Username = "testuser", Password = "password1234" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -198,13 +186,13 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Arrange
 			userDto = new UserDto { Username = "usertest", Password = "password123" };
 
 			// Act
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -217,17 +205,17 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Login to get the JWT
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(loginDto);
 
 			// Act
 			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto.Id}");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
-			response = await _httpClient.SendAsync(request);
+			response = await Client.SendAsync(request);
 
 			// Assert
 			var userResponse = await response.Content.ReadFromJsonAsync<UserResponseDto>();
@@ -241,17 +229,17 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Login to get the JWT
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(loginDto);
 
 			// Act
 			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto.Id + 1}");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
-			response = await _httpClient.SendAsync(request);
+			response = await Client.SendAsync(request);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -262,25 +250,25 @@ namespace EagleBank.Tests
 		{
 			// Add a user to the database first
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			var userDto1 = new UserDto { Username = "testuser1", Password = "password123" };
-			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto1);
+			_ = await Client.PostAsJsonAsync("/v1/users", userDto1);
 
 			// Login to get the JWT
-			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 			LoginDto? loginDto = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(loginDto);
 
 			// Login with the other use to get the id
-			response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto1);
+			response = await Client.PostAsJsonAsync("/v1/users/login", userDto1);
 			LoginDto? loginDto1 = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(loginDto1);
 
 			// Act
 			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/users/{loginDto1.Id}");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
-			response = await _httpClient.SendAsync(request);
+			response = await Client.SendAsync(request);
 
 			// Assert
 			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

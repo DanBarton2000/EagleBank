@@ -26,13 +26,23 @@ namespace EagleBank.Services
 			return AccountResponseDto.FromAccount(account);
 		}
 
+		public async Task<Account?> GetAccount(int accountId)
+		{
+			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
+
+			if (account is null)
+				return null;
+
+			return account;
+		}
+
 		public async Task<ICollection<AccountResponseDto>?> GetAccounts(int userId)
 		{
 			User? user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId);
 			if (user is null)
 				return null;
 
-			var accounts = context.Accounts.Where(a => a.UserId == userId);
+			var accounts = await context.Accounts.Where(a => a.UserId == userId).ToListAsync();
 
 			List<AccountResponseDto> rtn = [];
 
