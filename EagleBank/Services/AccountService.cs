@@ -2,6 +2,8 @@
 using EagleBank.Entities;
 using EagleBank.Models;
 using Microsoft.EntityFrameworkCore;
+using OneOf;
+using System.Threading.Tasks;
 
 namespace EagleBank.Services
 {
@@ -26,7 +28,23 @@ namespace EagleBank.Services
 			return AccountResponseDto.FromAccount(account);
 		}
 
-		public async Task<Account?> GetAccount(int accountId)
+		public async Task<OneOf<Account, NotFoundError, ForbiddenError>> DeleteAccountAsync(int userId, int accountId)
+		{
+			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
+
+			if (account is null) 
+				return new NotFoundError(accountId);
+
+			if (account.UserId != userId)
+				return new ForbiddenError(accountId, userId);
+
+			context.Accounts.Remove(account);
+			await context.SaveChangesAsync();
+
+			return account;
+		}
+
+		public async Task<Account?> GetAccountAsync(int accountId)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
@@ -36,7 +54,7 @@ namespace EagleBank.Services
 			return account;
 		}
 
-		public async Task<ICollection<AccountResponseDto>?> GetAccounts(int userId)
+		public async Task<ICollection<AccountResponseDto>?> GetAccountsAsync(int userId)
 		{
 			User? user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId);
 			if (user is null)

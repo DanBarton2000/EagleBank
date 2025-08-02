@@ -3,6 +3,7 @@ using EagleBank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using OneOf.Types;
 using System.Security.Claims;
 
 namespace EagleBank.Controllers
@@ -41,7 +42,7 @@ namespace EagleBank.Controllers
 			if (!int.TryParse(nameIdClaim.Value, out int nameId))
 				return BadRequest("JWT did not contain Id.");
 
-			var accounts = await accountService.GetAccounts(nameId);
+			var accounts = await accountService.GetAccountsAsync(nameId);
 			
 			if (accounts is null)
 				return NotFound();
@@ -60,7 +61,7 @@ namespace EagleBank.Controllers
 			if (!int.TryParse(nameIdClaim.Value, out int nameId))
 				return BadRequest("JWT did not contain Id.");
 
-			var account = await accountService.GetAccount(id);
+			var account = await accountService.GetAccountAsync(id);
 
 			if (account is null)
 				return NotFound();
@@ -69,6 +70,27 @@ namespace EagleBank.Controllers
 				return Forbid();
 
 			return Ok(AccountResponseDto.FromAccount(account));
+		}
+
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteAccount(int id)
+		{
+			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+
+			if (nameIdClaim is null)
+				return Forbid();
+
+			if (!int.TryParse(nameIdClaim.Value, out int nameId))
+				return BadRequest("JWT did not contain Id.");
+
+			var result = await accountService.DeleteAccountAsync(nameId, id);
+
+			var action = result.Match<IActionResult>(
+				account => Ok(account),
+				notFound => NotFound(),
+				forbidden => Forbid());
+
+			return action;
 		}
 	}
 }

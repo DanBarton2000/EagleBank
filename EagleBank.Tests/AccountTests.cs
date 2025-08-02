@@ -1,4 +1,5 @@
 ﻿using EagleBank.Data;
+using EagleBank.Entities;
 using EagleBank.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -129,6 +130,66 @@ namespace EagleBank.Tests
 			// Act
 			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{0}");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user1.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task DeleteAccount_DeleteOwnAccount_ReturnsOkWithAccountResponseDto()
+		{
+			// Arrange
+			LoginDto user = await CreateAndLoginUser("username", "password123");
+			AccountResponseDto account = await CreateCurrentAccount(user);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Delete, $"/v1/accounts/{account.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+			// Verify the account was removed
+			using var scope = WebApplicationFactory.Services.CreateScope();
+			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
+			var accountInDb = await dbContext.Accounts.FirstOrDefaultAsync(account => account.Id == account.Id);
+			Assert.Null(accountInDb);
+		}
+
+		[Fact]
+		public async Task DeleteAccount_DeleteAnotherUsersAccount_ReturnsForbidden()
+		{
+			// Arrange
+			LoginDto user1 = await CreateAndLoginUser("username1", "password123");
+			LoginDto user2 = await CreateAndLoginUser("username2", "password123");
+			AccountResponseDto account = await CreateCurrentAccount(user1);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Delete, $"/v1/accounts/{account.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user2.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+			// Verify the account was not removed
+			using var scope = WebApplicationFactory.Services.CreateScope();
+			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
+			var accountInDb = await dbContext.Accounts.FirstOrDefaultAsync(account => account.Id == account.Id);
+			Assert.NotNull(accountInDb);
+		}
+
+		[Fact]
+		public async Task DeleteAccount_DeleteNonExistentAccount_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto user = await CreateAndLoginUser("username", "password123");
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Delete, $"/v1/accounts/0");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
 			var response = await Client.SendAsync(request);
 
 			// Assert
