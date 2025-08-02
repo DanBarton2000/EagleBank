@@ -14,9 +14,21 @@ namespace EagleBank.Controllers
 			UserDto? user = await authService.CreateAsync(request);
 
 			if (user is null)
-				return BadRequest("Username already exists.");
+				return BadRequest("Failed to create user.");
 
 			return Ok(user);
+		}
+
+		[HttpPost]
+		[Route("login")]
+		public async Task<ActionResult<string>> Login(UserDto userDto)
+		{
+			var token = await authService.LoginAsync(userDto);
+
+			if (token == null)
+				return BadRequest("Invalid username or password.");
+
+			return Ok(token);
 		}
 	}
 }

@@ -3,9 +3,14 @@ using EagleBank.Entities;
 using EagleBank.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json.Linq;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 
 namespace EagleBank.Tests
 {
@@ -71,7 +76,7 @@ namespace EagleBank.Tests
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 			var responseContent = await response.Content.ReadAsStringAsync();
-			Assert.Contains("Username already exists", responseContent);
+			Assert.Contains("Failed to create user.", responseContent);
 		}
 
 		[Fact]
@@ -111,6 +116,103 @@ namespace EagleBank.Tests
 
 			// Assert
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task Login_WhenDetailsAreValid_ReturnsOkWithJWT()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+			var responseContent = await response.Content.ReadAsStringAsync();
+
+			var configuration = _webApplicationFactory.Services.GetRequiredService<IConfiguration>();
+			var tokenValidationParameters = new TokenValidationParameters
+			{
+				ValidateIssuer = true,
+				ValidIssuer = configuration["AppSettings:Issuer"],
+				ValidateAudience = true,
+				ValidAudience = configuration["AppSettings:Audience"],
+				ValidateLifetime = true,
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(
+				Encoding.UTF8.GetBytes(configuration["AppSettings:Token"]!))
+			};
+
+			var tokenHandler = new JwtSecurityTokenHandler();
+
+			try
+			{
+				var principal = tokenHandler.ValidateToken(responseContent, tokenValidationParameters, out var validatedToken);
+
+				Assert.NotNull(principal);
+				Assert.IsType<JwtSecurityToken>(validatedToken);
+				Assert.True(validatedToken.ValidTo > DateTime.UtcNow);
+			}
+			catch (SecurityTokenException ex)
+			{
+				Assert.Fail($"Token validation failed: {ex.Message}");
+			}
+		}
+
+		[Fact]
+		public async Task Login_WhenUserDoesntExist_ReturnsBadRequest()
+		{
+			// Arrange
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+			var responseContent = await response.Content.ReadAsStringAsync();
+			Assert.Contains("Invalid username or password.", responseContent);
+		}
+
+		[Fact]
+		public async Task Login_WhenPasswordIsIncorrect_ReturnsBadRequest()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Arrange
+			userDto = new UserDto { Username = "testuser", Password = "password1234" };
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+			var responseContent = await response.Content.ReadAsStringAsync();
+			Assert.Contains("Invalid username or password.", responseContent);
+		}
+
+		[Fact]
+		public async Task Login_WhenUsernameIsIncorrect_ReturnsBadRequest()
+		{
+			// Add a user to the database first
+			var userDto = new UserDto { Username = "testuser", Password = "password123" };
+			_ = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Arrange
+			userDto = new UserDto { Username = "usertest", Password = "password123" };
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users/login", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+			var responseContent = await response.Content.ReadAsStringAsync();
+			Assert.Contains("Invalid username or password.", responseContent);
 		}
 
 		public Task InitializeAsync() => Task.CompletedTask;
