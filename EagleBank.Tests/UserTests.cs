@@ -14,7 +14,7 @@ namespace EagleBank.Tests
 	{
 		private readonly WebApplicationFactory<Program> _webApplicationFactory;
 		private readonly HttpClient _httpClient;
-		private Func<Task> _resetDatabase;
+		private readonly Func<Task> _resetDatabase;
 
 		public UserTests(CustomWebApplicationFactory factory)
 		{
@@ -72,6 +72,45 @@ namespace EagleBank.Tests
 			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 			var responseContent = await response.Content.ReadAsStringAsync();
 			Assert.Contains("Username already exists", responseContent);
+		}
+
+		[Fact]
+		public async Task CreateUser_MissingUsername_ReturnsBadRequest()
+		{
+			// Arrange
+			var userDto = new { Password = "testuser" };
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task CreateUser_MissingPassword_ReturnsBadRequest()
+		{
+			// Arrange
+			var userDto = new { Username = "testuser" };
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task CreateUser_Null_ReturnsBadRequest()
+		{
+			// Arrange
+			UserDto? userDto = null;
+
+			// Act
+			var response = await _httpClient.PostAsJsonAsync("/v1/users", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 		}
 
 		public Task InitializeAsync() => Task.CompletedTask;

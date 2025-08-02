@@ -10,6 +10,12 @@ namespace EagleBank.Services
 	{
 		public async Task<UserDto?> CreateAsync(UserDto request)
 		{
+			if (string.IsNullOrEmpty(request.Username))
+				return null;
+
+			if (string.IsNullOrEmpty(request.Password))
+				return null;
+
 			if (await context.Users.AnyAsync(u => u.Username == request.Username)) 
 				return null;
 
