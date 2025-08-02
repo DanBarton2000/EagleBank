@@ -1,0 +1,6 @@
+@EagleBank_HostAddress = http://localhost:5234
+
+GET {{EagleBank_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
