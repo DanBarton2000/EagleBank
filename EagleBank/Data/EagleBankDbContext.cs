@@ -6,5 +6,6 @@ namespace EagleBank.Data
 	public class EagleBankDbContext(DbContextOptions<EagleBankDbContext> options) : DbContext(options)
 	{
 		public DbSet<User> Users { get; set; }
+		public DbSet<Account> Accounts { get; set; }
 	}
 }

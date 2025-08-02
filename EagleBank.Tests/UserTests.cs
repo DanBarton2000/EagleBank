@@ -15,23 +15,18 @@ using System.Text;
 
 namespace EagleBank.Tests
 {
-	[Collection(nameof(DatabaseTestCollection))]
-	public class UserTests : IAsyncLifetime
+	public class UserTests : DatabaseTests
 	{
-		private readonly WebApplicationFactory<Program> _webApplicationFactory;
 		private readonly HttpClient _httpClient;
-		private readonly Func<Task> _resetDatabase;
 
-		public UserTests(CustomWebApplicationFactory factory)
+		public UserTests(CustomWebApplicationFactory factory) : base(factory)
 		{
 			var clientOptions = new WebApplicationFactoryClientOptions
 			{
 				AllowAutoRedirect = false
 			};
 
-			_webApplicationFactory = factory;
-			_httpClient = _webApplicationFactory.CreateClient(clientOptions);
-			_resetDatabase = factory.ResetDatabase;
+			_httpClient = WebApplicationFactory.CreateClient(clientOptions);
 		}
 
 		[Fact]
@@ -50,7 +45,7 @@ namespace EagleBank.Tests
 			Assert.Equal(userDto.Username, responseUser.Username);
 
 			// Verify the user was added to the database
-			using var scope = _webApplicationFactory.Services.CreateScope();
+			using var scope = WebApplicationFactory.Services.CreateScope();
 			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
 			var userInDb = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == userDto.Username);
 			Assert.NotNull(userInDb);
@@ -64,7 +59,7 @@ namespace EagleBank.Tests
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
 
 			// Add a user to the database first
-			using (var scope = _webApplicationFactory.Services.CreateScope())
+			using (var scope = WebApplicationFactory.Services.CreateScope())
 			{
 				var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
 				dbContext.Users.Add(new User { Username = userDto.Username, PasswordHash = "hashedPassword" });
@@ -135,7 +130,7 @@ namespace EagleBank.Tests
 			var responseContent = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(responseContent);
 
-			var configuration = _webApplicationFactory.Services.GetRequiredService<IConfiguration>();
+			var configuration = WebApplicationFactory.Services.GetRequiredService<IConfiguration>();
 			var tokenValidationParameters = new TokenValidationParameters
 			{
 				ValidateIssuer = true,
@@ -290,9 +285,5 @@ namespace EagleBank.Tests
 			// Assert
 			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 		}
-
-		public Task InitializeAsync() => Task.CompletedTask;
-
-		public Task DisposeAsync() => _resetDatabase();
 	}
 }
