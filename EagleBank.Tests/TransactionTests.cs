@@ -123,5 +123,127 @@ namespace EagleBank.Tests
 			Assert.Equal(accountResponse.Id, accountDto.Id);
 			Assert.Equal(accountResponse.Value, deposit.Amount - withdrawalTransaction.Amount);
 		}
+
+		[Fact]
+		public async Task CreateTransaction_DepositAnotherUser_ReturnsForbidden()
+		{
+			// Arrange
+			LoginDto loginDto1 = await CreateAndLoginUser("username1", "password123");
+			LoginDto loginDto2 = await CreateAndLoginUser("username2", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto1);
+
+			CreateTransactionDto withdrawalTransaction = new()
+			{
+				Amount = 10,
+				Type = Entities.TransactionType.Deposit
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/{accountDto.Id}/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto2.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+			// Verify
+			AccountResponseDto accountResponse = await GetAccount(loginDto1, accountDto);
+			Assert.Equal(accountResponse.Id, accountDto.Id);
+			Assert.Equal(0, accountResponse.Value);
+		}
+
+		[Fact]
+		public async Task CreateTransaction_WithdrawAnotherUser_ReturnsForbidden()
+		{
+			// Arrange
+			LoginDto loginDto1 = await CreateAndLoginUser("username1", "password123");
+			LoginDto loginDto2 = await CreateAndLoginUser("username2", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto1);
+
+			CreateTransactionDto withdrawalTransaction = new()
+			{
+				Amount = 10,
+				Type = Entities.TransactionType.Withdrawal
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/{accountDto.Id}/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto2.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+			// Verify
+			AccountResponseDto accountResponse = await GetAccount(loginDto1, accountDto);
+			Assert.Equal(accountResponse.Id, accountDto.Id);
+			Assert.Equal(0, accountResponse.Value);
+		}
+
+		[Fact]
+		public async Task CreateTransaction_DepositAccountDoesntExist_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username1", "password123");
+
+			CreateTransactionDto withdrawalTransaction = new()
+			{
+				Amount = 10,
+				Type = Entities.TransactionType.Deposit
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/0/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task CreateTransaction_WithdrawalAccountDoesntExist_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username1", "password123");
+
+			CreateTransactionDto withdrawalTransaction = new()
+			{
+				Amount = 10,
+				Type = Entities.TransactionType.Withdrawal
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/0/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+		}
 	}
 }
