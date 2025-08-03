@@ -31,5 +31,32 @@ namespace EagleBank.Controllers
 
 			return action;
 		}
+
+		[HttpGet]
+		public async Task<IActionResult> GetTransactions(int accountId)
+		{
+			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+
+			if (nameIdClaim is null)
+				return Forbid();
+
+			if (!int.TryParse(nameIdClaim.Value, out int nameId))
+				return BadRequest("JWT did not contain Id.");
+
+			var result = await transactionService.GetTransactions(nameId, accountId);
+
+			var action = result.Match<IActionResult>(
+							transaction => Ok(transaction),
+							notFound => NotFound(),
+							forbidden => Forbid());
+
+			return action;
+		}
+
+		[HttpGet("{transactionId}")]
+		public async Task<IActionResult> GetTransaction(int accountId, int transactionId)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

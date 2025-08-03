@@ -245,5 +245,78 @@ namespace EagleBank.Tests
 			// Assert
 			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 		}
+
+		[Fact]
+		public async Task GetTransactions_GetAll_ReturnsOkWithCollectionOfTransactionsResultDto()
+		{
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto);
+
+			List<TransactionResponseDto> transactions = [];
+
+			int transactionsCount = 4;
+			for (int i = 0; i < transactionsCount; i++)
+			{
+				transactions.Add(await CreateTransaction(loginDto, accountDto, 10 + (i * 10), Entities.TransactionType.Deposit));
+			}
+
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountDto.Id}/transactions");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+			ICollection<TransactionResponseDto>? transactionsFromGet = await response.Content.ReadFromJsonAsync<ICollection<TransactionResponseDto>>();
+			Assert.NotNull(transactionsFromGet);
+			Assert.Equal(transactions.Count, transactionsFromGet.Count);
+
+			for (int i = 0; i < transactionsCount; i++)
+			{
+				Assert.Equal(transactions[i].Amount, transactionsFromGet.ElementAt(i).Amount);
+				Assert.Equal(transactions[i].Type, transactionsFromGet.ElementAt(i).Type);
+				Assert.Equal(transactions[i].Id, transactionsFromGet.ElementAt(i).Id);
+				Assert.Equal(transactions[i].AccountId, transactionsFromGet.ElementAt(i).AccountId);
+			}
+		}
+
+		[Fact]
+		public async Task GetTransactions_GetOtherUser_ReturnsForbidden()
+		{
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			LoginDto loginDto2 = await CreateAndLoginUser("username2", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto);
+
+			List<TransactionResponseDto> transactions = [];
+
+			int transactionsCount = 4;
+			for (int i = 0; i < transactionsCount; i++)
+			{
+				transactions.Add(await CreateTransaction(loginDto, accountDto, 10 + (i * 10), Entities.TransactionType.Deposit));
+			}
+
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountDto.Id}/transactions");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto2.Token);
+			var response = await Client.SendAsync(request);
+
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+			// Make sure we aren't getting any data returned even though we got a Forbidden status code.
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<ICollection<TransactionResponseDto>>());
+		}
+
+		[Fact]
+		public async Task GetTransactions_AccountDoesntExist_ReturnsNotfound()
+		{
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/0/transactions");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+			// Make sure we aren't getting any data returned even though we got a NotFound status code.
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<ICollection<TransactionResponseDto>>());
+		}
 	}
 }

@@ -38,5 +38,23 @@ namespace EagleBank.Services
 			await context.SaveChangesAsync();
 			return TransactionResponseDto.FromTransaction(transaction);
 		}
+
+		public Task<OneOf<TransactionResponseDto, NotFoundError, ForbiddenError>> GetTransaction(int userId, int accountId)
+		{
+			throw new NotImplementedException();
+		}
+
+		public async Task<OneOf<ICollection<TransactionResponseDto>, NotFoundError, ForbiddenError>> GetTransactions(int userId, int accountId)
+		{
+			var accountResult = await accountService.GetAccountAsync(userId, accountId);
+
+			if (accountResult.TryPickT1(out NotFoundError notFoundError, out var remainder))
+				return notFoundError;
+
+			if (remainder.TryPickT1(out ForbiddenError forbiddenError, out var account))
+				return forbiddenError;
+
+			return await context.Transactions.Where(t => t.AccountId == account.Id).Select(t => TransactionResponseDto.FromTransaction(t)).ToListAsync();
+		}
 	}
 }
