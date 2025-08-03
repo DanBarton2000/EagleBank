@@ -2,6 +2,7 @@
 using EagleBank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OneOf.Types;
 using System.Security.Claims;
@@ -51,7 +52,7 @@ namespace EagleBank.Controllers
 		}
 
 		[HttpGet("{id}")]
-		public async Task<ActionResult<AccountResponseDto>> GetAccount(int id)
+		public async Task<IActionResult> GetAccount(int id)
 		{
 			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
 
@@ -61,15 +62,14 @@ namespace EagleBank.Controllers
 			if (!int.TryParse(nameIdClaim.Value, out int nameId))
 				return BadRequest("JWT did not contain Id.");
 
-			var account = await accountService.GetAccountAsync(id);
+			var result = await accountService.GetAccountAsync(nameId, id);
 
-			if (account is null)
-				return NotFound();
+			var action = result.Match<IActionResult>(
+				account => Ok(account),
+				notFound => NotFound(),
+				forbidden => Forbid());
 
-			if (account.UserId != nameId)
-				return Forbid();
-
-			return Ok(AccountResponseDto.FromAccount(account));
+			return action;
 		}
 
 		[HttpDelete("{id}")]

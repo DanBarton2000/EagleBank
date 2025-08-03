@@ -3,7 +3,6 @@ using EagleBank.Entities;
 using EagleBank.Models;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
-using System.Threading.Tasks;
 
 namespace EagleBank.Services
 {
@@ -28,7 +27,7 @@ namespace EagleBank.Services
 			return AccountResponseDto.FromAccount(account);
 		}
 
-		public async Task<OneOf<Account, NotFoundError, ForbiddenError>> DeleteAccountAsync(int userId, int accountId)
+		public async Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> DeleteAccountAsync(int userId, int accountId)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
@@ -36,22 +35,25 @@ namespace EagleBank.Services
 				return new NotFoundError(accountId);
 
 			if (account.UserId != userId)
-				return new ForbiddenError(accountId, userId);
+				return new ForbiddenError(userId, accountId);
 
 			context.Accounts.Remove(account);
 			await context.SaveChangesAsync();
 
-			return account;
+			return AccountResponseDto.FromAccount(account);
 		}
 
-		public async Task<Account?> GetAccountAsync(int accountId)
+		public async Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> GetAccountAsync(int userId, int accountId)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
 			if (account is null)
-				return null;
+				return new NotFoundError(accountId);
 
-			return account;
+			if (account.UserId != userId)
+				return new ForbiddenError(userId, accountId);
+
+			return AccountResponseDto.FromAccount(account);
 		}
 
 		public async Task<ICollection<AccountResponseDto>?> GetAccountsAsync(int userId)
