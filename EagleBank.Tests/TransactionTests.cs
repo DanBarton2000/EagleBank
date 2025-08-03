@@ -318,5 +318,100 @@ namespace EagleBank.Tests
 			// Make sure we aren't getting any data returned even though we got a NotFound status code.
 			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<ICollection<TransactionResponseDto>>());
 		}
+
+		[Fact]
+		public async Task GetTransaction_ValidId_ReturnsOkWithResponseTransactionDto()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto);
+			TransactionResponseDto createTransaction = await CreateTransaction(loginDto, accountDto, 10, Entities.TransactionType.Deposit);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountDto.Id}/transactions/{createTransaction.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+			TransactionResponseDto? transactionFromGet = await response.Content.ReadFromJsonAsync<TransactionResponseDto>();
+			Assert.NotNull(transactionFromGet);
+			Assert.Equal(createTransaction.Amount, transactionFromGet.Amount);
+			Assert.Equal(createTransaction.Type, transactionFromGet.Type);
+			Assert.Equal(createTransaction.Id, transactionFromGet.Id);
+			Assert.Equal(createTransaction.AccountId, transactionFromGet.AccountId);
+		}
+
+		[Fact]
+		public async Task GetTransaction_AnotherUsersAccount_ReturnsForbidden()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			LoginDto loginDto2 = await CreateAndLoginUser("username2", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto);
+			TransactionResponseDto createTransaction = await CreateTransaction(loginDto, accountDto, 10, Entities.TransactionType.Deposit);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountDto.Id}/transactions/{createTransaction.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto2.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<TransactionResponseDto>());
+		}
+
+		[Fact]
+		public async Task GetTransaction_NonExistentAccount_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/1/transactions/1");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<TransactionResponseDto>());
+		}
+
+		[Fact]
+		public async Task GetTransaction_NonExistentTransaction_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			AccountResponseDto accountDto = await CreateCurrentAccount(loginDto);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{accountDto.Id}/transactions/1");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<TransactionResponseDto>());
+		}
+
+		[Fact]
+		public async Task GetTransaction_WrongAccount_ReturnsNotFound()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username", "password123");
+			AccountResponseDto account1 = await CreateCurrentAccount(loginDto);
+			AccountResponseDto account2 = await CreateCurrentAccount(loginDto);
+			TransactionResponseDto createTransaction = await CreateTransaction(loginDto, account1, 10, Entities.TransactionType.Deposit);
+
+			// Act
+			var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/accounts/{account2.Id}/transactions/{createTransaction.Id}");
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+			await Assert.ThrowsAsync<JsonException>(async () => await response.Content.ReadFromJsonAsync<TransactionResponseDto>());
+		}
 	}
 }
