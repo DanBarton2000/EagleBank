@@ -247,6 +247,58 @@ namespace EagleBank.Tests
 		}
 
 		[Fact]
+		public async Task CreateTransaction_MissingAmount_ReturnsBadRequest()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username1", "password123");
+
+			var withdrawalTransaction = new
+			{
+				Type = Entities.TransactionType.Withdrawal
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/0/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
+
+		[Fact]
+		public async Task CreateTransaction_MissingType_ReturnsBadRequest()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("username1", "password123");
+
+			var withdrawalTransaction = new
+			{
+				Amount = 10
+			};
+
+			var json = JsonSerializer.Serialize(withdrawalTransaction);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/accounts/0/transactions")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
+
+		[Fact]
 		public async Task GetTransactions_GetAll_ReturnsOkWithCollectionOfTransactionsResultDto()
 		{
 			LoginDto loginDto = await CreateAndLoginUser("username", "password123");

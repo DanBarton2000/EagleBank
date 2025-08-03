@@ -25,16 +25,12 @@ namespace EagleBank.Services
 
 			int direction = createTransactionDto.Type == TransactionType.Withdrawal ? -1 : 1;
 
-			Transaction transaction = new()
-			{
-				Amount = createTransactionDto.Amount,
-				Type = createTransactionDto.Type,
-				AccountId = account.Id
-			};
+			Transaction transaction = createTransactionDto.ToTransaction();
+			transaction.AccountId = account.Id;
 
 			context.Transactions.Add(transaction);
 			var accountDb = await context.Accounts.SingleAsync(a => a.Id == account.Id);
-			accountDb.Value += createTransactionDto.Amount * direction;
+			accountDb.Value += transaction.Amount * direction;
 			await context.SaveChangesAsync();
 			return TransactionResponseDto.FromTransaction(transaction);
 		}

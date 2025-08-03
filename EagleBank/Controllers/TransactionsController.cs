@@ -13,6 +13,9 @@ namespace EagleBank.Controllers
 		[HttpPost]
 		public async Task<IActionResult> CreateTransaction(int accountId, [FromBody] CreateTransactionDto dto)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
 			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
 
 			if (nameIdClaim is null)

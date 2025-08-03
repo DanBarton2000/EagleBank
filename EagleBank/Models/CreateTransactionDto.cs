@@ -1,10 +1,26 @@
 ﻿using EagleBank.Entities;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.ComponentModel.DataAnnotations;
 
 namespace EagleBank.Models
 {
 	public class CreateTransactionDto
 	{
-		public TransactionType Type { get; set; }
-		public decimal Amount { get; set; }
+		[Required]
+		public TransactionType? Type { get; set; }
+		[Required]
+		public decimal? Amount { get; set; }
+
+		public Transaction ToTransaction()
+		{
+			if (Type == null || Amount == null)
+				throw new InvalidOperationException("Cannot convert DTO to User: Missing required fields");
+
+			return new()
+			{
+				Type = (TransactionType)Type,
+				Amount = (decimal)Amount
+			};
+		}
 	}
 }
