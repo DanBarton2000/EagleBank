@@ -14,7 +14,7 @@ namespace EagleBank.Models
 		public Transaction ToTransaction()
 		{
 			if (Type == null || Amount == null)
-				throw new InvalidOperationException("Cannot convert DTO to User: Missing required fields");
+				throw new InvalidOperationException("Cannot convert DTO to Transaction: Missing required fields");
 
 			return new()
 			{
