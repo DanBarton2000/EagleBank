@@ -27,7 +27,7 @@ namespace EagleBank.Tests
 			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 			var responseUser = await response.Content.ReadFromJsonAsync<UserDto>();
 			Assert.NotNull(responseUser);
 			Assert.Equal(userDto.Username, responseUser.Username);
@@ -113,7 +113,7 @@ namespace EagleBank.Tests
 			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
 			var responseContent = await response.Content.ReadFromJsonAsync<LoginDto>();
 			Assert.NotNull(responseContent);

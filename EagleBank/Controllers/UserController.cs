@@ -1,4 +1,5 @@
-﻿using EagleBank.Models;
+﻿using EagleBank.Entities;
+using EagleBank.Models;
 using EagleBank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +20,7 @@ namespace EagleBank.Controllers
 			if (user is null)
 				return BadRequest("Failed to create user.");
 
-			return Ok(user);
+			return CreatedAtAction(nameof(FetchDetails), new { id = user.Id }, user);
 		}
 
 		[HttpPost]
@@ -32,7 +33,7 @@ namespace EagleBank.Controllers
 			if (loginDto == null)
 				return BadRequest("Invalid username or password.");
 
-			return Ok(loginDto);
+			return CreatedAtAction(nameof(FetchDetails), new { id = loginDto.Id }, loginDto);
 		}
 
 		[HttpGet("{id}")]

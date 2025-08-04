@@ -42,7 +42,7 @@ namespace EagleBank.Tests
 			var response = await Client.SendAsync(request);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
 			var transactionResponse = await response.Content.ReadFromJsonAsync<TransactionResponseDto>();
 			Assert.NotNull(transactionResponse);
@@ -116,7 +116,7 @@ namespace EagleBank.Tests
 			var response = await Client.SendAsync(request);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
 			// Verify
 			AccountResponseDto accountResponse = await GetAccount(loginDto, accountDto);

@@ -29,7 +29,7 @@ namespace EagleBank.Controllers
 			if (response is null)
 				return BadRequest(request);
 
-			return Ok(response);
+			return CreatedAtAction(nameof(GetAccount), new { id = response.Id },  response);
 		}
 
 		[HttpGet]

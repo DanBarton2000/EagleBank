@@ -42,7 +42,7 @@ namespace EagleBank.Tests
 			Assert.NotNull(response);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
 			var accountResponse = await response.Content.ReadFromJsonAsync<AccountResponseDto>();
 			Assert.NotNull(accountResponse);

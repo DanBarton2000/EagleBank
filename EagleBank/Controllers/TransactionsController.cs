@@ -27,7 +27,7 @@ namespace EagleBank.Controllers
 			var result = await transactionService.CreateTransaction(nameId, accountId, dto);
 
 			var action = result.Match<IActionResult>(
-							transaction => Ok(transaction),
+							transaction => CreatedAtAction(nameof(GetTransaction), new { accountId, transactionId = transaction.Id }, transaction),
 							error => StatusCode((int)error.StatusCode, error.Message));
 
 			return action;
