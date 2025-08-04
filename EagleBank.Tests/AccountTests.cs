@@ -49,7 +49,7 @@ namespace EagleBank.Tests
 			Assert.Equal(accountDto.Type, accountResponse.Type);
 			Assert.Equal(0m, accountResponse.Value);
 
-			// Verify the user was added to the database
+			// Verify the account was added to the database
 			using var scope = WebApplicationFactory.Services.CreateScope();
 			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
 			var accountInDb = await dbContext.Accounts.FirstOrDefaultAsync(account => account.Id == accountResponse.Id);
@@ -57,6 +57,34 @@ namespace EagleBank.Tests
 			Assert.Equal(loginDto.Id, accountInDb.UserId);
 		}
 
+		[Fact]
+		public async Task CreateAccount_MissingData_ReturnsBadRequest()
+		{
+			// Arrange
+			LoginDto loginDto = await CreateAndLoginUser("testuser", "password123");
+			AccountDto accountDto = new();
+
+			var json = JsonSerializer.Serialize(accountDto);
+
+			var request = new HttpRequestMessage(HttpMethod.Post, "/v1/accounts")
+			{
+				Content = new StringContent(json, Encoding.UTF8, "application/json")
+			};
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginDto.Token);
+
+			// Act
+			var response = await Client.SendAsync(request);
+			
+			// Assert
+			Assert.NotNull(response);
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+			// Verify the account was not added to the database
+			using var scope = WebApplicationFactory.Services.CreateScope();
+			var dbContext = scope.ServiceProvider.GetRequiredService<EagleBankDbContext>();
+			var accountsCount = dbContext.Accounts.Count();
+			Assert.Equal(0, accountsCount);
+		}
 
 		[Fact]
 		public async Task GetAccounts_ReturnsOkWithListAccountResponseDto()

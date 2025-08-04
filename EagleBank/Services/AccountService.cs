@@ -14,9 +14,12 @@ namespace EagleBank.Services
 			if (user is null)
 				return null;
 
+			if (request.Type is null)
+				return null;
+
 			Account account = new()
 			{
-				Type = request.Type,
+				Type = (AccountType)request.Type,
 				Value = 0m,
 				User = user
 			};

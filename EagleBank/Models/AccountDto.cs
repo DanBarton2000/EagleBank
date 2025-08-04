@@ -1,9 +1,11 @@
 ﻿using EagleBank.Entities;
+using System.ComponentModel.DataAnnotations;
 
 namespace EagleBank.Models
 {
 	public class AccountDto
 	{
-		public AccountType Type { get; set; }
+		[Required]
+		public AccountType? Type { get; set; }
 	}
 }

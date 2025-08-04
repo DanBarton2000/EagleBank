@@ -16,6 +16,9 @@ namespace EagleBank.Controllers
 		[HttpPost]
 		public async Task<ActionResult<AccountResponseDto>> CreateAccount(AccountDto request)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
 			Claim? nameIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
 
 			if (nameIdClaim is null)
