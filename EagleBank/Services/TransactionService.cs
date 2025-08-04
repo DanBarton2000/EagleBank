@@ -12,13 +12,13 @@ namespace EagleBank.Services
 	{
 		public async Task<OneOf<TransactionResponseDto, NotFoundError, ForbiddenError, UnprocessableEntity>> CreateTransaction(int userId, int accountId, CreateTransactionDto createTransactionDto)
 		{
-			var accountResult = await accountService.GetAccountAsync(userId, accountId);
+			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
-			if (accountResult.TryPickT1(out NotFoundError notFoundError, out var remainder))
-				return notFoundError;
+			if (account == null)
+				return new NotFoundError(accountId);
 
-			if (remainder.TryPickT1(out ForbiddenError forbiddenError, out var account))
-				return forbiddenError;
+			if (account.UserId != userId)
+				return new ForbiddenError(userId, accountId);
 
 			if (createTransactionDto.Type == TransactionType.Withdrawal && account.Value < createTransactionDto.Amount)
 				return new UnprocessableEntity(userId, accountId);
@@ -29,8 +29,7 @@ namespace EagleBank.Services
 			transaction.AccountId = account.Id;
 
 			context.Transactions.Add(transaction);
-			var accountDb = await context.Accounts.SingleAsync(a => a.Id == account.Id);
-			accountDb.Value += transaction.Amount * direction;
+			account.Value += transaction.Amount * direction;
 			await context.SaveChangesAsync();
 			return TransactionResponseDto.FromTransaction(transaction);
 		}
