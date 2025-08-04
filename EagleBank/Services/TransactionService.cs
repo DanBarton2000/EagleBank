@@ -4,24 +4,24 @@ using EagleBank.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
-using OneOf.Types;
+using System.Net;
 
 namespace EagleBank.Services
 {
 	public class TransactionService(EagleBankDbContext context, IAccountService accountService) : ITransactionService
 	{
-		public async Task<OneOf<TransactionResponseDto, NotFoundError, ForbiddenError, UnprocessableEntity>> CreateTransaction(int userId, int accountId, CreateTransactionDto createTransactionDto)
+		public async Task<OneOf<TransactionResponseDto, Error>> CreateTransaction(int userId, int accountId, CreateTransactionDto createTransactionDto)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
 			if (account == null)
-				return new NotFoundError(accountId);
+				return new Error(HttpStatusCode.NotFound, $"Could not find account with id {accountId}");
 
 			if (account.UserId != userId)
-				return new ForbiddenError(userId, accountId);
+				return new Error(HttpStatusCode.Forbidden, $"Tried to access account {accountId}, but it isn't an account of {userId}");
 
 			if (createTransactionDto.Type == TransactionType.Withdrawal && account.Value < createTransactionDto.Amount)
-				return new UnprocessableEntity(userId, accountId);
+				return new Error(HttpStatusCode.UnprocessableEntity, $"Not enough funds (£{account.Value}) in account {accountId} to withdraw £{createTransactionDto.Amount}");
 
 			int direction = createTransactionDto.Type == TransactionType.Withdrawal ? -1 : 1;
 
@@ -34,33 +34,27 @@ namespace EagleBank.Services
 			return TransactionResponseDto.FromTransaction(transaction);
 		}
 
-		public async Task<OneOf<TransactionResponseDto, NotFoundError, ForbiddenError>> GetTransaction(int userId, int accountId, int transactionId)
+		public async Task<OneOf<TransactionResponseDto, Error>> GetTransaction(int userId, int accountId, int transactionId)
 		{
 			var accountResult = await accountService.GetAccountAsync(userId, accountId);
 
-			if (accountResult.TryPickT1(out NotFoundError notFoundError, out var remainder))
-				return notFoundError;
-
-			if (remainder.TryPickT1(out ForbiddenError forbiddenError, out var account))
-				return forbiddenError;
+			if (accountResult.TryPickT1(out Error error, out var remainder))
+				return error;
 
 			Transaction? transaction = await context.Transactions.Where(t => t.AccountId == accountId).SingleOrDefaultAsync(t => t.Id == transactionId);
 
 			if (transaction is null)
-				return new NotFoundError(accountId);
+				return new Error(HttpStatusCode.NotFound, $"Transaction {transactionId} for account {accountId} does not exist");
 
 			return TransactionResponseDto.FromTransaction(transaction);
 		}
 
-		public async Task<OneOf<ICollection<TransactionResponseDto>, NotFoundError, ForbiddenError>> GetTransactions(int userId, int accountId)
+		public async Task<OneOf<ICollection<TransactionResponseDto>, Error>> GetTransactions(int userId, int accountId)
 		{
 			var accountResult = await accountService.GetAccountAsync(userId, accountId);
 
-			if (accountResult.TryPickT1(out NotFoundError notFoundError, out var remainder))
-				return notFoundError;
-
-			if (remainder.TryPickT1(out ForbiddenError forbiddenError, out var account))
-				return forbiddenError;
+			if (accountResult.TryPickT1(out Error error, out var account))
+				return error;
 
 			return await context.Transactions.Where(t => t.AccountId == account.Id).Select(t => TransactionResponseDto.FromTransaction(t)).ToListAsync();
 		}

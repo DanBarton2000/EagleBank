@@ -66,8 +66,7 @@ namespace EagleBank.Controllers
 
 			var action = result.Match<IActionResult>(
 				account => Ok(account),
-				notFound => NotFound(),
-				forbidden => Forbid());
+				error => StatusCode((int)error.StatusCode, error.Message));
 
 			return action;
 		}
@@ -87,8 +86,7 @@ namespace EagleBank.Controllers
 
 			var action = result.Match<IActionResult>(
 				account => Ok(account),
-				notFound => NotFound(),
-				forbidden => Forbid());
+				error => StatusCode((int)error.StatusCode, error.Message));
 
 			return action;
 		}

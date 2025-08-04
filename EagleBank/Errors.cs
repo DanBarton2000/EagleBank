@@ -1,6 +1,10 @@
-﻿namespace EagleBank
+﻿using System.Net;
+
+namespace EagleBank
 {
-	public record NotFoundError(int AccountId);
-	public record ForbiddenError(int UserId, int AccountId);
-	public record UnprocessableEntity(int UserId, int AccountId);
+	public class Error(HttpStatusCode statusCode, string message)
+	{
+		public HttpStatusCode StatusCode { get; } = statusCode;
+		public string Message { get; } = message;
+	}
 }

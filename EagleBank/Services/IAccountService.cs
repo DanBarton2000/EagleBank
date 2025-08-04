@@ -8,7 +8,7 @@ namespace EagleBank.Services
 	{
 		Task<AccountResponseDto?> CreateAsync(AccountDto request, int userId);
 		Task<ICollection<AccountResponseDto>?> GetAccountsAsync(int userId);
-		Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> GetAccountAsync(int userId, int accountId);
-		Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> DeleteAccountAsync(int userId, int accountId);
+		Task<OneOf<AccountResponseDto, Error>> GetAccountAsync(int userId, int accountId);
+		Task<OneOf<AccountResponseDto, Error>> DeleteAccountAsync(int userId, int accountId);
 	}
 }

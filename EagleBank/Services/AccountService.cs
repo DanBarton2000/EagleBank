@@ -27,15 +27,15 @@ namespace EagleBank.Services
 			return AccountResponseDto.FromAccount(account);
 		}
 
-		public async Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> DeleteAccountAsync(int userId, int accountId)
+		public async Task<OneOf<AccountResponseDto, Error>> DeleteAccountAsync(int userId, int accountId)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
-			if (account is null) 
-				return new NotFoundError(accountId);
+			if (account is null)
+				return new Error(System.Net.HttpStatusCode.NotFound, $"Couldn't delete account {accountId} because it doesn't exist");
 
 			if (account.UserId != userId)
-				return new ForbiddenError(userId, accountId);
+				return new Error(System.Net.HttpStatusCode.Forbidden, $"Couldn't delete account {accountId} because it doesn't belong to {userId}");
 
 			context.Accounts.Remove(account);
 			await context.SaveChangesAsync();
@@ -43,15 +43,15 @@ namespace EagleBank.Services
 			return AccountResponseDto.FromAccount(account);
 		}
 
-		public async Task<OneOf<AccountResponseDto, NotFoundError, ForbiddenError>> GetAccountAsync(int userId, int accountId)
+		public async Task<OneOf<AccountResponseDto, Error>> GetAccountAsync(int userId, int accountId)
 		{
 			var account = await context.Accounts.SingleOrDefaultAsync(a => a.Id == accountId);
 
 			if (account is null)
-				return new NotFoundError(accountId);
+				return new Error(System.Net.HttpStatusCode.NotFound, $"Couldn't get account {accountId} because it doesn't exist");
 
 			if (account.UserId != userId)
-				return new ForbiddenError(userId, accountId);
+				return new Error(System.Net.HttpStatusCode.Forbidden, $"Couldn't get account {accountId} because it doesn't belong to {userId}");
 
 			return AccountResponseDto.FromAccount(account);
 		}
