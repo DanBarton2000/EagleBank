@@ -15,6 +15,9 @@ namespace EagleBank.Controllers
 		[AllowAnonymous]
 		public async Task<ActionResult<UserResponseDto>> CreateUser(UserDto request)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
 			UserResponseDto? user = await authService.CreateAsync(request);
 
 			if (user is null)
@@ -28,6 +31,9 @@ namespace EagleBank.Controllers
 		[AllowAnonymous]
 		public async Task<ActionResult<LoginDto>> Login(UserDto userDto)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
 			LoginDto? loginDto = await authService.LoginAsync(userDto);
 
 			if (loginDto == null)

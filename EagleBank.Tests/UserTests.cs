@@ -273,5 +273,18 @@ namespace EagleBank.Tests
 			// Assert
 			Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 		}
+
+		[Fact]
+		public async Task Login_WhenMissingAllData_ReturnsBadRequest()
+		{
+			// Arrange
+			var userDto = new UserDto { };
+
+			// Act
+			var response = await Client.PostAsJsonAsync("/v1/users/login", userDto);
+
+			// Assert
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		}
 	}
 }
