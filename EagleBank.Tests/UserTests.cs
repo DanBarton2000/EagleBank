@@ -41,7 +41,7 @@ namespace EagleBank.Tests
 		}
 
 		[Fact]
-		public async Task CreateUser_WhenUsernameExists_ReturnsBadRequest()
+		public async Task CreateUser_WhenUsernameExists_ReturnsConflict()
 		{
 			// Arrange
 			var userDto = new UserDto { Username = "testuser", Password = "password123" };
@@ -58,9 +58,9 @@ namespace EagleBank.Tests
 			var response = await Client.PostAsJsonAsync("/v1/users", userDto);
 
 			// Assert
-			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+			Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 			var responseContent = await response.Content.ReadAsStringAsync();
-			Assert.Contains("Failed to create user.", responseContent);
+			Assert.Contains("User already exists.", responseContent);
 		}
 
 		[Fact]

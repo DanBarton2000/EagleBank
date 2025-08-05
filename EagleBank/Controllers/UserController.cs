@@ -3,27 +3,29 @@ using EagleBank.Models;
 using EagleBank.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OneOf.Types;
 using System.Security.Claims;
 
 namespace EagleBank.Controllers
 {
 	[Route("v1/users")]
 	[ApiController]
-	public class UserController(IAuthService authService) : ControllerBase
+	public class UserController(IUserService userService) : ControllerBase
 	{
 		[HttpPost]
 		[AllowAnonymous]
-		public async Task<ActionResult<UserResponseDto>> CreateUser(UserDto request)
+		public async Task<IActionResult> CreateUser(UserDto request)
 		{
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState);
 
-			UserResponseDto? user = await authService.CreateAsync(request);
+			var result = await userService.CreateAsync(request);
 
-			if (user is null)
-				return BadRequest("Failed to create user.");
+			var action = result.Match<IActionResult>(
+							user => CreatedAtAction(nameof(FetchDetails), new { id = user.Id }, user),
+							error => StatusCode((int)error.StatusCode, error.Message));
 
-			return CreatedAtAction(nameof(FetchDetails), new { id = user.Id }, user);
+			return action;
 		}
 
 		[HttpPost]
@@ -34,7 +36,7 @@ namespace EagleBank.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState);
 
-			LoginDto? loginDto = await authService.LoginAsync(userDto);
+			LoginDto? loginDto = await userService.LoginAsync(userDto);
 
 			if (loginDto == null)
 				return BadRequest("Invalid username or password.");
@@ -53,11 +55,13 @@ namespace EagleBank.Controllers
 			if (!int.TryParse(nameIdClaim.Value, out int nameId))
 				return BadRequest("JWT did not contain Id.");
 			
-			var response = await authService.FetchUserAsync(id);
+			var response = await userService.FetchUserAsync(id);
 
 			if (response is null)
 				return NotFound();
 
+			// Scenario: User wants to fetch the user details of a non-existent user
+			// We have to call FetchUserAsync first to get the NotFound response
 			if (nameId != id)
 				return Forbid();
 

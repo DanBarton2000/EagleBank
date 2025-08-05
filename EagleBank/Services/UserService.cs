@@ -5,24 +5,25 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using OneOf;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
 namespace EagleBank.Services
 {
-	public class AuthService(EagleBankDbContext context, IConfiguration configuration) : IAuthService
+	public class UserService(EagleBankDbContext context, IConfiguration configuration) : IUserService
 	{
-		public async Task<UserResponseDto?> CreateAsync(UserDto request)
+		public async Task<OneOf<UserResponseDto, Error>> CreateAsync(UserDto request)
 		{
 			if (string.IsNullOrEmpty(request.Username))
-				return null;
+				return new Error(System.Net.HttpStatusCode.BadRequest, "Missing username.");
 
 			if (string.IsNullOrEmpty(request.Password))
-				return null;
+				return new Error(System.Net.HttpStatusCode.BadRequest, "Missing password.");
 
-			if (await context.Users.AnyAsync(u => u.Username == request.Username)) 
-				return null;
+			if (await context.Users.AnyAsync(u => u.Username == request.Username))
+				return new Error(System.Net.HttpStatusCode.Conflict, "User already exists.");
 
 			var user = new User();
 			var hashedPasword = new PasswordHasher<User>().HashPassword(user, request.Password);
